@@ -9,7 +9,10 @@ const app = express()
 app.use(express.json())
 app.use(cors())
 dotenv.config()
-
+function isString(param) {
+    if (typeof (param) !== "string" || !param) return true
+    return false
+}
 let db
 const mongoClient = new MongoClient(process.env.DATABASE_URL)
 mongoClient.connect()
@@ -18,7 +21,7 @@ mongoClient.connect()
 
 app.post("/participants", async (req, res) => {
     const { name } = req.body
-    if (typeof (name) !== "string" || !name) return res.sendStatus(422)
+    if (isString(name)) return res.sendStatus(422)
     try {
         const test = await db.collection("participants").findOne({ name })
         if (test) return res.sendStatus(409)
@@ -38,10 +41,33 @@ app.post("/participants", async (req, res) => {
     }
 })
 
-app.get("/participants", (req, res)=>{
+app.get("/participants", (req, res) => {
     db.collection("participants").find().toArray()
-    .then(participants => res.status(201).send(participants))
-    .catch(err => res.status(500).send(err.message))
+        .then(participants => res.status(201).send(participants))
+        .catch(err => res.status(500).send(err.message))
+})
+
+app.post("/messages", async (req, res) => {
+    const { to, text, type } = req.body
+    const { user } = req.headers
+    if (isString(to) || isString(text) || (type !== "private_message" && type !== "message") || !req.headers.user) {
+        console.log(req.headers)
+        return res.sendStatus(422)
+    }
+    try {
+        const participant = await db.collection("participants").findOne({name:user})
+        if (!participant) return res.sendStatus(422)
+        await db.collection("messages").insertOne({
+            from: user,
+            to,
+            text,
+            type,
+            time: dayjs(Date.now()).format("HH:mm:ss")
+        })
+        res.sendStatus(201)
+    } catch(err){
+        res.status(500).send(err.message)
+    }
 })
 const PORT = 5000
 app.listen(PORT, () => console.log(`A aplicação está rodando na porta ${PORT}`))
