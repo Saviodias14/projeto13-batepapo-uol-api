@@ -77,16 +77,28 @@ app.get("/messages", (req, res) => {
     db.collection("messages").find({$or: [{ type: "public" }, { to: "Todos" }, { to: User }, { from: User }]}).toArray()
         .then(messages => {
             if (!limit && limit !== 0) {
-                return res.status(201).send(messages)
+                return res.send(messages)
             }
-            if (limit > 0) {
+            if (limit > 0 && limit<=messages.length) {
                 const filteredMessages = messages.slice(-limit)
-                return res.status(201).send(filteredMessages)
+                return res.send(filteredMessages)
             }
             res.sendStatus(422)
         })
         .catch(err => res.status(500).send(err.message))
 })
 
+app.post("status", async(req, res)=>{
+    const {user} = req.headers
+    if(!user) return res.sendStatus(404)
+    try{
+        const isParticipant = await db.collection("participants").findOne({name:user})
+        if(!isParticipant) return res.sendStatus(404)
+        db.collection("participants").updateOne({name: user}, {$set:{lastStatus: Date.now()}})
+        res.sendStatus(200)
+    } catch(err){
+        res.status(500).send(err.message)
+    }
+})
 const PORT = 5000
 app.listen(PORT, () => console.log(`A aplicação está rodando na porta ${PORT}`))
