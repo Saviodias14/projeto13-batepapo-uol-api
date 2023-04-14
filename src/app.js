@@ -37,5 +37,11 @@ app.post("/participants", async (req, res) => {
         res.status(500).send(err.message)
     }
 })
+
+app.get("/participants", (req, res)=>{
+    db.collection("participants").find().toArray()
+    .then(participants => res.status(201).send(participants))
+    .catch(err => res.status(500).send(err.message))
+})
 const PORT = 5000
 app.listen(PORT, () => console.log(`A aplicação está rodando na porta ${PORT}`))
