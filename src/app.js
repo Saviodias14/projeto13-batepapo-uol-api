@@ -50,12 +50,12 @@ app.get("/participants", (req, res) => {
 app.post("/messages", async (req, res) => {
     const { to, text, type } = req.body
     const { user } = req.headers
-    if (isString(to) || isString(text) || (type !== "private_message" && type !== "message") || !req.headers.user) {
-        console.log(req.headers)
+    if (isString(to) || isString(text) || (type !== "private_message" && type !== "message") || !user) {
+        console.log(user)
         return res.sendStatus(422)
     }
     try {
-        const participant = await db.collection("participants").findOne({name:user})
+        const participant = await db.collection("participants").findOne({ name: user })
         if (!participant) return res.sendStatus(422)
         await db.collection("messages").insertOne({
             from: user,
@@ -65,9 +65,28 @@ app.post("/messages", async (req, res) => {
             time: dayjs(Date.now()).format("HH:mm:ss")
         })
         res.sendStatus(201)
-    } catch(err){
+    } catch (err) {
         res.status(500).send(err.message)
     }
 })
+
+app.get("/messages", (req, res) => {
+    const { User } = req.headers
+    const { limit } = req.query
+    console.log(limit)
+    db.collection("messages").find({$or: [{ type: "public" }, { to: "Todos" }, { to: User }, { from: User }]}).toArray()
+        .then(messages => {
+            if (!limit && limit !== 0) {
+                return res.status(201).send(messages)
+            }
+            if (limit > 0) {
+                const filteredMessages = messages.slice(-limit)
+                return res.status(201).send(filteredMessages)
+            }
+            res.sendStatus(422)
+        })
+        .catch(err => res.status(500).send(err.message))
+})
+
 const PORT = 5000
 app.listen(PORT, () => console.log(`A aplicação está rodando na porta ${PORT}`))
