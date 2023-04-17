@@ -49,16 +49,16 @@ app.get("/participants", (req, res) => {
 
 app.post("/messages", async (req, res) => {
     const { to, text, type } = req.body
-    const { user } = req.headers
-    if (isString(to) || isString(text) || (type !== "private_message" && type !== "message") || !user) {
-        console.log(user)
+    const { User } = req.headers
+    if (isString(to) || isString(text) || (type !== "private_message" && type !== "message") || !User) {
+        console.log(User)
         return res.sendStatus(422)
     }
     try {
-        const participant = await db.collection("participants").findOne({ name: user })
+        const participant = await db.collection("participants").findOne({ name: User })
         if (!participant) return res.sendStatus(422)
         await db.collection("messages").insertOne({
-            from: user,
+            from: User,
             to,
             text,
             type,
@@ -73,13 +73,12 @@ app.post("/messages", async (req, res) => {
 app.get("/messages", (req, res) => {
     const { User } = req.headers
     const { limit } = req.query
-    console.log(limit)
-    db.collection("messages").find({$or: [{ type: "public" }, { to: "Todos" }, { to: User }, { from: User }]}).toArray()
+    db.collection("messages").find({ $or: [{ type: "public" }, { to: "Todos" }, { to: User }, { from: User }] }).toArray()
         .then(messages => {
             if (!limit && limit !== 0) {
                 return res.send(messages)
             }
-            if (limit > 0 && limit<=messages.length) {
+            if (limit > 0 && limit <= messages.length) {
                 const filteredMessages = messages.slice(-limit)
                 return res.send(filteredMessages)
             }
@@ -88,17 +87,36 @@ app.get("/messages", (req, res) => {
         .catch(err => res.status(500).send(err.message))
 })
 
-app.post("status", async(req, res)=>{
-    const {user} = req.headers
-    if(!user) return res.sendStatus(404)
-    try{
-        const isParticipant = await db.collection("participants").findOne({name:user})
-        if(!isParticipant) return res.sendStatus(404)
-        db.collection("participants").updateOne({name: user}, {$set:{lastStatus: Date.now()}})
+app.post("/status", async (req, res) => {
+    const { User } = req.headers
+    if (!User) return res.sendStatus(404)
+    try {
+        const isParticipant = await db.collection("participants").findOne({ name: User })
+        if (!isParticipant) return res.sendStatus(404)
+        db.collection("participants").updateOne({ name: User }, { $set: { lastStatus: Date.now() } })
         res.sendStatus(200)
-    } catch(err){
+    } catch (err) {
         res.status(500).send(err.message)
     }
 })
+setInterval(async () => {
+    const time = Date.now() - 10000
+    try {
+        const listOfParticipants = await db.collection("participants").find({ lastStatus: { $lt: time } }).toArray()
+        console.log(listOfParticipants)
+        await db.collection("participants").deleteMany({ lastStatus: { $lt: time } })
+        listOfParticipants.forEach((participant) => {
+            db.collection("messages").insertOne({
+                from: participant.name,
+                to: 'Todos',
+                text: 'sai da sala...',
+                type: 'status',
+                time: dayjs(Date.now()).format("HH:mm:ss")
+            })
+        })
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+}, 15000)
 const PORT = 5000
 app.listen(PORT, () => console.log(`A aplicação está rodando na porta ${PORT}`))
