@@ -49,16 +49,16 @@ app.get("/participants", (req, res) => {
 
 app.post("/messages", async (req, res) => {
     const { to, text, type } = req.body
-    const { User } = req.headers
-    if (isString(to) || isString(text) || (type !== "private_message" && type !== "message") || !User) {
-        console.log(User)
+    const { user } = req.headers
+    if (isString(to) || isString(text) || (type !== "private_message" && type !== "message") || !user) {
+        console.log(user)
         return res.sendStatus(422)
     }
     try {
-        const participant = await db.collection("participants").findOne({ name: User })
+        const participant = await db.collection("participants").findOne({ name: user })
         if (!participant) return res.sendStatus(422)
         await db.collection("messages").insertOne({
-            from: User,
+            from: user,
             to,
             text,
             type,
@@ -71,9 +71,9 @@ app.post("/messages", async (req, res) => {
 })
 
 app.get("/messages", (req, res) => {
-    const { User } = req.headers
+    const { user } = req.headers
     const { limit } = req.query
-    db.collection("messages").find({ $or: [{ type: "public" }, { to: "Todos" }, { to: User }, { from: User }] }).toArray()
+    db.collection("messages").find({ $or: [{ type: "public" }, { to: "Todos" }, { to: user }, { from: user }] }).toArray()
         .then(messages => {
             if (!limit && limit !== 0) {
                 return res.send(messages)
@@ -88,12 +88,12 @@ app.get("/messages", (req, res) => {
 })
 
 app.post("/status", async (req, res) => {
-    const { User } = req.headers
-    if (!User) return res.sendStatus(404)
+    const { user } = req.headers
+    if (!user) return res.sendStatus(404)
     try {
-        const isParticipant = await db.collection("participants").findOne({ name: User })
+        const isParticipant = await db.collection("participants").findOne({ name: user })
         if (!isParticipant) return res.sendStatus(404)
-        db.collection("participants").updateOne({ name: User }, { $set: { lastStatus: Date.now() } })
+        db.collection("participants").updateOne({ name: user }, { $set: { lastStatus: Date.now() } })
         res.sendStatus(200)
     } catch (err) {
         res.status(500).send(err.message)
