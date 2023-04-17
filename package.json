@@ -17,6 +17,7 @@
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "mongodb": "^5.2.0",
-    "nodemon": "^2.0.22"
+    "nodemon": "^2.0.22",
+    "string-strip-html": "^13.2.3"
   }
 }

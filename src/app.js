@@ -3,6 +3,7 @@ import cors from "cors"
 import { MongoClient } from "mongodb"
 import dotenv from "dotenv"
 import dayjs from "dayjs"
+import { stripHtml } from "string-strip-html"
 
 const app = express()
 
@@ -20,7 +21,8 @@ mongoClient.connect()
     .catch((err) => console.log(err.message))
 
 app.post("/participants", async (req, res) => {
-    const { name } = req.body
+    let { name } = req.body
+    name = stripHtml(name.trim()).result
     if (isString(name)) return res.sendStatus(422)
     try {
         const test = await db.collection("participants").findOne({ name })
@@ -48,7 +50,8 @@ app.get("/participants", (req, res) => {
 })
 
 app.post("/messages", async (req, res) => {
-    const { to, text, type } = req.body
+    let { to, text, type } = req.body
+    text = stripHtml(text.trim()).result
     const { user } = req.headers
     if (isString(to) || isString(text) || (type !== "private_message" && type !== "message") || !user) {
         console.log(user)
