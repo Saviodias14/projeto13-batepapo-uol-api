@@ -11,10 +11,6 @@ const app = express()
 app.use(express.json())
 app.use(cors())
 dotenv.config()
-function isString(param) {
-    if (typeof (param) !== "string" || !param) return true
-    return false
-}
 
 const nameSchema = joi.object({ name: joi.string().required() })
 
@@ -63,7 +59,7 @@ app.get("/participants", (req, res) => {
 app.post("/messages", async (req, res) => {
     const { to, text, type } = req.body
     const { user } = req.headers
-    const validation = messageSchema.validate({ to, text:stripHtml(text.trim()).result }, { abortEarly: false })
+    const validation = messageSchema.validate({ to, text}, { abortEarly: false })
     if(validation.error){
         const errors = validation.error.details.map((detail) => detail.message)
         return res.status(422).send(errors)
@@ -120,8 +116,10 @@ app.post("/status", async (req, res) => {
 app.delete("/messages/ID_DA_MENSAGEM", async (req, res) => {
     const { user } = req.headers
     const { id } = req.params
+    console.log(id)
     try {
         const existId = await db.collection("messages").findOne({ _id: new ObjectId(id) })
+        console.log(existId)
         if (!existId) return res.sendStatus(404)
         if (user !== existId.from) return res.sendStatus(401)
         await db.collection("messages").deleteOne({ _id: new ObjectId(id) })
@@ -129,10 +127,6 @@ app.delete("/messages/ID_DA_MENSAGEM", async (req, res) => {
     } catch (err) {
         res.status(500).send(err.message)
     }
-})
-
-app.put("/messages/ID_DA_MENSAGEM", (req, res) => {
-
 })
 
 setInterval(async () => {
