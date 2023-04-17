@@ -102,6 +102,21 @@ app.post("/status", async (req, res) => {
         res.status(500).send(err.message)
     }
 })
+
+app.delete("/messages/ID_DA_MENSAGEM", async (req, res) => {
+    const { user } = req.headers
+    const { id } = req.params
+    try {
+        const existId = await db.collection("messages").findOne({ _id: new ObjectId(id) })
+        if (!existId) return res.sendStatus(404)
+        if(user!==existId.from)return res.sendStatus(401)
+        await db.collection("messages").deleteOne({ _id: new ObjectId(id) })
+        res.sendStatus(200)
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+})
+
 setInterval(async () => {
     const time = Date.now() - 10000
     try {
