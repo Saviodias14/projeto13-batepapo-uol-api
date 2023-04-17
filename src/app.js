@@ -4,6 +4,7 @@ import { MongoClient } from "mongodb"
 import dotenv from "dotenv"
 import dayjs from "dayjs"
 import { stripHtml } from "string-strip-html"
+import joi from "joi"
 
 const app = express()
 
@@ -14,6 +15,13 @@ function isString(param) {
     if (typeof (param) !== "string" || !param) return true
     return false
 }
+
+const nameSchema = joi.object({ name: joi.string().required() })
+
+const messageSchema = joi.object({
+    to: joi.string().required(),
+    text: joi.string().required()
+})
 let db
 const mongoClient = new MongoClient(process.env.DATABASE_URL)
 mongoClient.connect()
@@ -22,13 +30,17 @@ mongoClient.connect()
 
 app.post("/participants", async (req, res) => {
     const { name } = req.body
-    if (isString(name)) return res.sendStatus(422)
+    const validation = nameSchema.validate({ name }, { abortEarly: false })
+    if (validation.error) {
+        const errors = validation.error.details.map((detail) => detail.message)
+        return res.status(422).send(errors)
+    }
     try {
         const test = await db.collection("participants").findOne({ name: stripHtml(name.trim()).result })
         if (test) return res.sendStatus(409)
 
         const newDate = Date.now()
-        await db.collection("participants").insertOne({ name:stripHtml(name.trim()).result, lastStatus: newDate })
+        await db.collection("participants").insertOne({ name: stripHtml(name.trim()).result, lastStatus: newDate })
         await db.collection("messages").insertOne({
             from: stripHtml(name.trim()).result,
             to: 'Todos',
@@ -49,10 +61,14 @@ app.get("/participants", (req, res) => {
 })
 
 app.post("/messages", async (req, res) => {
-    let { to, text, type } = req.body
+    const { to, text, type } = req.body
     const { user } = req.headers
-    if (isString(to) || isString(stripHtml(text.trim()).result) || (type !== "private_message" && type !== "message") || !user) {
-        console.log(user)
+    const validation = messageSchema.validate({ to, text:stripHtml(text.trim()).result }, { abortEarly: false })
+    if(validation.error){
+        const errors = validation.error.details.map((detail) => detail.message)
+        return res.status(422).send(errors)
+    }
+    if ((type !== "private_message" && type !== "message") || !user) {
         return res.sendStatus(422)
     }
     try {
@@ -107,7 +123,7 @@ app.delete("/messages/ID_DA_MENSAGEM", async (req, res) => {
     try {
         const existId = await db.collection("messages").findOne({ _id: new ObjectId(id) })
         if (!existId) return res.sendStatus(404)
-        if(user!==existId.from)return res.sendStatus(401)
+        if (user !== existId.from) return res.sendStatus(401)
         await db.collection("messages").deleteOne({ _id: new ObjectId(id) })
         res.sendStatus(200)
     } catch (err) {
@@ -115,7 +131,7 @@ app.delete("/messages/ID_DA_MENSAGEM", async (req, res) => {
     }
 })
 
-app.put("/messages/ID_DA_MENSAGEM", (req, res)=>{
+app.put("/messages/ID_DA_MENSAGEM", (req, res) => {
 
 })
 
