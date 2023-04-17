@@ -73,12 +73,12 @@ app.post("/messages", async (req, res) => {
 app.get("/messages", (req, res) => {
     const { user } = req.headers
     const { limit } = req.query
-    db.collection("messages").find({ $or: [{ type: "public" }, { to: "Todos" }, { to: user }, { from: user }] }).toArray()
+    db.collection("messages").find({ $or: [{ type: "message" }, { to: "Todos" }, { to: user }, { from: user }] }).toArray()
         .then(messages => {
             if (!limit && limit !== 0) {
                 return res.send(messages)
             }
-            if (limit > 0 && limit <= messages.length) {
+            if (limit > 0) {
                 const filteredMessages = messages.slice(-limit)
                 return res.send(filteredMessages)
             }
