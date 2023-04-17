@@ -21,17 +21,16 @@ mongoClient.connect()
     .catch((err) => console.log(err.message))
 
 app.post("/participants", async (req, res) => {
-    let { name } = req.body
-    name = stripHtml(name.trim()).result
+    const { name } = req.body
     if (isString(name)) return res.sendStatus(422)
     try {
-        const test = await db.collection("participants").findOne({ name })
+        const test = await db.collection("participants").findOne({ name: stripHtml(name.trim()).result })
         if (test) return res.sendStatus(409)
 
         const newDate = Date.now()
-        await db.collection("participants").insertOne({ name, lastStatus: newDate })
+        await db.collection("participants").insertOne({ name:stripHtml(name.trim()).result, lastStatus: newDate })
         await db.collection("messages").insertOne({
-            from: name,
+            from: stripHtml(name.trim()).result,
             to: 'Todos',
             text: 'entra na sala...',
             type: 'status',
@@ -51,9 +50,8 @@ app.get("/participants", (req, res) => {
 
 app.post("/messages", async (req, res) => {
     let { to, text, type } = req.body
-    text = stripHtml(text.trim()).result
     const { user } = req.headers
-    if (isString(to) || isString(text) || (type !== "private_message" && type !== "message") || !user) {
+    if (isString(to) || isString(stripHtml(text.trim()).result) || (type !== "private_message" && type !== "message") || !user) {
         console.log(user)
         return res.sendStatus(422)
     }
@@ -63,7 +61,7 @@ app.post("/messages", async (req, res) => {
         await db.collection("messages").insertOne({
             from: user,
             to,
-            text,
+            text: stripHtml(text.trim()).result,
             type,
             time: dayjs(Date.now()).format("HH:mm:ss")
         })
@@ -115,6 +113,10 @@ app.delete("/messages/ID_DA_MENSAGEM", async (req, res) => {
     } catch (err) {
         res.status(500).send(err.message)
     }
+})
+
+app.put("/messages/ID_DA_MENSAGEM", (req, res)=>{
+
 })
 
 setInterval(async () => {
